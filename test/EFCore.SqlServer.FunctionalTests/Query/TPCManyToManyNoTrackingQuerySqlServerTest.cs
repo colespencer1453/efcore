@@ -15,7 +15,7 @@ public class TPCManyToManyNoTrackingQuerySqlServerTest : TPCManyToManyNoTracking
     protected override bool CanExecuteQueryString
         => true;
 
-    [ConditionalFact]
+    [ConditionalFact(Skip = "TODOU: Needs #27493")]
     public virtual void Check_all_tests_overridden()
         => TestHelpers.AssertAllMethodsOverridden(GetType());
 
@@ -1805,4 +1805,3 @@ WHERE 0 = 1");
     private void AssertSql(params string[] expected)
         => Fixture.TestSqlLoggerFactory.AssertBaseline(expected);
 }
-
