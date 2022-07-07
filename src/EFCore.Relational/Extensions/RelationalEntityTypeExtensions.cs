@@ -506,8 +506,8 @@ public static class RelationalEntityTypeExtensions
     /// <summary>
     ///     Returns the SQL string mappings.
     /// </summary>
-    /// <param name="entityType">The entity type to get the function mappings for.</param>
-    /// <returns>The functions to which the entity type is mapped.</returns>
+    /// <param name="entityType">The entity type to get the SQL string mappings for.</param>
+    /// <returns>The SQL string to which the entity type is mapped.</returns>
     public static IEnumerable<ISqlQueryMapping> GetSqlQueryMappings(this IEntityType entityType)
         => (IEnumerable<ISqlQueryMapping>?)entityType.FindRuntimeAnnotationValue(
                 RelationalAnnotationNames.SqlQueryMappings)
@@ -573,7 +573,89 @@ public static class RelationalEntityTypeExtensions
                 RelationalAnnotationNames.FunctionMappings)
             ?? Enumerable.Empty<IFunctionMapping>();
 
-    #endregion Function mapping
+    #endregion
+
+    #region SProc mapping
+
+    /// <summary>
+    ///     Returns the stored procedure to which the entity type is mapped for updates
+    ///     or <see langword="null" /> if not mapped to a stored procedure.
+    /// </summary>
+    /// <param name="entityType">The entity type to get the function name for.</param>
+    /// <returns>The name of the function to which the entity type is mapped.</returns>
+    public static StoredProcedure? GetUpdateStoredProcedure(this IReadOnlyEntityType entityType)
+        => (string?)entityType[RelationalAnnotationNames.UpdateStoredProcedure]
+            ?? (entityType.BaseType != null
+                ? entityType.GetRootType().GetUpdateStoredProcedure()
+                : null);
+
+    /// <summary>
+    ///     Maps the entity type to a stored procedure for updates.
+    /// </summary>
+    /// <param name="entityType">The entity type.</param>
+    public static StoredProcedure SetUpdateStoredProcedure(this IMutableEntityType entityType)
+        => entityType.SetAnnotation(
+            RelationalAnnotationNames.UpdateStoredProcedure,
+            Check.NullButNotEmpty(name, nameof(name)));
+
+    /// <summary>
+    ///     Maps the entity type to a stored procedure for updates.
+    /// </summary>
+    /// <param name="entityType">The entity type.</param>
+    /// <param name="fromDataAnnotation">Indicates whether the configuration was specified using a data annotation.</param>
+    /// <returns>The configured value.</returns>
+    public static StoredProcedure? SetUpdateStoredProcedure(
+        this IConventionEntityType entityType,
+        bool fromDataAnnotation = false)
+        => (string?)entityType.SetAnnotation(
+            RelationalAnnotationNames.UpdateStoredProcedure,
+            Check.NullButNotEmpty(name, nameof(name)),
+            fromDataAnnotation)?.Value;
+
+    /// <summary>
+    ///     Removes the mapped the update stored procedure fot this entity type.
+    /// </summary>
+    /// <param name="entityType">The entity type.</param>
+    /// <returns>The removed value.</returns>
+    public static StoredProcedure? RemoveUpdateStoredProcedure(this IMutableEntityType entityType)
+        => entityType.SetAnnotation(
+            RelationalAnnotationNames.UpdateStoredProcedure,
+            Check.NullButNotEmpty(name, nameof(name)));
+
+    /// <summary>
+    ///     Removes the mapped the update stored procedure fot this entity type.
+    /// </summary>
+    /// <param name="entityType">The entity type.</param>
+    /// <param name="fromDataAnnotation">Indicates whether the configuration was specified using a data annotation.</param>
+    /// <returns>The removed value.</returns>
+    public static StoredProcedure? RemoveUpdateStoredProcedure(
+        this IConventionEntityType entityType,
+        bool fromDataAnnotation = false)
+        => (string?)entityType.SetAnnotation(
+            RelationalAnnotationNames.UpdateStoredProcedure,
+            Check.NullButNotEmpty(name, nameof(name)),
+            fromDataAnnotation)?.Value;
+
+    /// <summary>
+    ///     Gets the <see cref="ConfigurationSource" /> for the update stored procedure.
+    /// </summary>
+    /// <param name="entityType">The entity type to find configuration source for.</param>
+    /// <returns>The <see cref="ConfigurationSource" /> for the function name.</returns>
+    public static ConfigurationSource? GetUpdateStoredProcedureConfigurationSource(this IConventionEntityType entityType)
+        => entityType.FindAnnotation(RelationalAnnotationNames.UpdateStoredProcedure)
+            ?.GetConfigurationSource();
+
+    ///// <summary>
+    /////     Returns the functions to which the entity type is mapped.
+    ///// </summary>
+    ///// <param name="entityType">The entity type to get the function mappings for.</param>
+    ///// <returns>The functions to which the entity type is mapped.</returns>
+    //public static IEnumerable<IFunctionMapping> GetFunctionMappings(this IEntityType entityType)
+    //    => (IEnumerable<IFunctionMapping>?)entityType.FindRuntimeAnnotationValue(
+    //            RelationalAnnotationNames.FunctionMappings)
+    //        ?? Enumerable.Empty<IFunctionMapping>();
+
+    #endregion
 
     #region Check constraint
 
