@@ -1270,7 +1270,7 @@ namespace Microsoft.EntityFrameworkCore.Diagnostics
                 expected, actual);
 
         /// <summary>
-        ///     The entity type '{dependentType}' is mapped to '{storeObject}'. However the principal entity type '{principalEntityType}' is also mapped to '{storeObject}' and it's using the TPC mapping strategy. Only leaf entity types in a TPC hierarchy can use table-sharing.
+        ///     The entity type '{dependentType}' is mapped to '{storeObject}'. However the principal entity type '{principalEntityType}' is also mapped to '{storeObject}' and it's using the TPC mapping strategy. Entity types in a TPC hierarchy can use table-sharing only if they have no derived types.
         /// </summary>
         public static string TpcTableSharing(object? dependentType, object? storeObject, object? principalEntityType)
             => string.Format(

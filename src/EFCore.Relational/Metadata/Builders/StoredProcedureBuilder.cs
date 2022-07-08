@@ -17,7 +17,7 @@ public class StoredProcedureBuilder : IInfrastructure<EntityTypeBuilder>, IInfra
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
     [EntityFrameworkInternal]
-    public StoredProcedureBuilder(StoredProcedure sproc, EntityTypeBuilder entityTypeBuilder)
+    public StoredProcedureBuilder(IMutableStoredProcedure sproc, EntityTypeBuilder entityTypeBuilder)
     {
         Builder = ((StoredProcedure)sproc).Builder;
         EntityTypeBuilder = entityTypeBuilder;

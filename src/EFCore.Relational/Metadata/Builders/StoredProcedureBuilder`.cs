@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Internal;
 namespace Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 /// <summary>
-///     Provides a simple API for configuring a <see cref="IMutable" /> that an entity type is mapped to.
+///     Provides a simple API for configuring a <see cref="IMutableStoredProcedure" /> that an entity type is mapped to.
 /// </summary>
 /// <typeparam name="TEntity">The entity type being configured.</typeparam>
 public class StoredProcedureBuilder<TEntity> : StoredProcedureBuilder, IInfrastructure<EntityTypeBuilder<TEntity>>
@@ -19,7 +19,7 @@ public class StoredProcedureBuilder<TEntity> : StoredProcedureBuilder, IInfrastr
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
     [EntityFrameworkInternal]
-    public StoredProcedureBuilder(StoredProcedure sproc, EntityTypeBuilder<TEntity> entityTypeBuilder)
+    public StoredProcedureBuilder(IMutableStoredProcedure sproc, EntityTypeBuilder<TEntity> entityTypeBuilder)
         : base(sproc, entityTypeBuilder)
     {
     }

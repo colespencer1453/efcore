@@ -2,9 +2,6 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Diagnostics.CodeAnalysis;
-using System.Text;
-using Microsoft.EntityFrameworkCore.Internal;
-using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 
 namespace Microsoft.EntityFrameworkCore.Metadata.Internal;
 
@@ -14,12 +11,12 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal;
 ///     any release. You should only use it directly in your code with extreme caution and knowing that
 ///     doing so can result in application failures when updating to a new Entity Framework Core release.
 /// </summary>
-public class StoredProcedure : ConventionAnnotatable//, IMutableStoredProcedure, IConventionStoredProcedure, IRuntimeStoredProcedure
+public class StoredProcedure : ConventionAnnotatable, IStoredProcedure, IMutableStoredProcedure, IConventionStoredProcedure
 {
     private readonly List<DbFunctionParameter> _parameters = new();
     private string? _schema;
     private string? _name;
-    private InternalDbFunctionBuilder? _builder;
+    private InternalStoredProcedureBuilder? _builder;
 
     private ConfigurationSource _configurationSource;
     private ConfigurationSource? _schemaConfigurationSource;
@@ -85,10 +82,13 @@ public class StoredProcedure : ConventionAnnotatable//, IMutableStoredProcedure,
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
-    public static IEnumerable<IDbFunction> GetDbFunctions(IReadOnlyModel model)
-        => ((SortedDictionary<string, IDbFunction>?)model[RelationalAnnotationNames.DbFunctions])
-            ?.Values
-            ?? Enumerable.Empty<IDbFunction>();
+    public static StoredProcedure? GetStoredProcedure(
+        IReadOnlyEntityType entityType,
+        EntityState sprocType)
+        => (StoredProcedure?)entityType[GetAnnotationName(sprocType)]
+            ?? (entityType.BaseType != null
+                ? GetStoredProcedure(entityType.GetRootType(), sprocType)
+                : null);
 
     /// <summary>
     ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
@@ -96,39 +96,14 @@ public class StoredProcedure : ConventionAnnotatable//, IMutableStoredProcedure,
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
-    public static IReadOnlyDbFunction? FindDbFunction(IReadOnlyModel model, MethodInfo methodInfo)
-        => model[RelationalAnnotationNames.DbFunctions] is SortedDictionary<string, IDbFunction> functions
-            && functions.TryGetValue(GetFunctionName(methodInfo), out var dbFunction)
-                ? dbFunction
-                : null;
-
-    /// <summary>
-    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
-    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
-    ///     any release. You should only use it directly in your code with extreme caution and knowing that
-    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
-    /// </summary>
-    public static IReadOnlyDbFunction? FindDbFunction(IReadOnlyModel model, string name)
-        => model[RelationalAnnotationNames.DbFunctions] is SortedDictionary<string, IDbFunction> functions
-            && functions.TryGetValue(name, out var dbFunction)
-                ? dbFunction
-                : null;
-
-    /// <summary>
-    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
-    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
-    ///     any release. You should only use it directly in your code with extreme caution and knowing that
-    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
-    /// </summary>
-    public static DbFunction AddDbFunction(
-        IMutableModel model,
-        MethodInfo methodInfo,
-        ConfigurationSource configurationSource)
+    public static IMutableStoredProcedure SetStoredProcedure(
+        IMutableEntityType entityType,
+        EntityState sprocType)
     {
-        var function = new DbFunction(methodInfo, model, configurationSource);
+        var sproc = new StoredProcedure(entityType, ConfigurationSource.Explicit);
+        entityType.SetAnnotation(GetAnnotationName(sprocType), sproc);
 
-        GetOrCreateFunctions(model).Add(function.ModelName, function);
-        return function;
+        return sproc;
     }
 
     /// <summary>
@@ -137,21 +112,14 @@ public class StoredProcedure : ConventionAnnotatable//, IMutableStoredProcedure,
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
-    public static DbFunction AddDbFunction(
-        IMutableModel model,
-        string name,
-        Type returnType,
-        ConfigurationSource configurationSource)
-    {
-        var function = new DbFunction(name, returnType, null, model, configurationSource);
-
-        GetOrCreateFunctions(model).Add(name, function);
-        return function;
-    }
-
-    private static SortedDictionary<string, IDbFunction> GetOrCreateFunctions(IMutableModel model)
-        => (SortedDictionary<string, IDbFunction>)(
-            model[RelationalAnnotationNames.DbFunctions] ??= new SortedDictionary<string, IDbFunction>(StringComparer.Ordinal));
+    public static IConventionStoredProcedure? SetStoredProcedure(
+        IConventionEntityType entityType,
+        EntityState sprocType,
+        bool fromDataAnnotation)
+        => (IConventionStoredProcedure?)entityType.SetAnnotation(
+            GetAnnotationName(sprocType),
+            new StoredProcedure((IMutableEntityType)entityType,
+                fromDataAnnotation ? ConfigurationSource.DataAnnotation : ConfigurationSource.Convention))?.Value;
 
     /// <summary>
     ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
@@ -159,45 +127,37 @@ public class StoredProcedure : ConventionAnnotatable//, IMutableStoredProcedure,
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
-    public static DbFunction? RemoveDbFunction(
-        IMutableModel model,
-        MethodInfo methodInfo)
-    {
-        if (model[RelationalAnnotationNames.DbFunctions] is SortedDictionary<string, IDbFunction> functions)
+    public static IMutableStoredProcedure? RemoveStoredProcedure(IMutableEntityType entityType, EntityState sprocType)
+        => (IMutableStoredProcedure?)entityType.RemoveAnnotation(GetAnnotationName(sprocType))?.Value;
+
+    /// <summary>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </summary>
+    public static IConventionStoredProcedure? RemoveStoredProcedure(IConventionEntityType entityType, EntityState sprocType)
+        => (IConventionStoredProcedure?)entityType.RemoveAnnotation(GetAnnotationName(sprocType))?.Value;
+
+    /// <summary>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </summary>
+    public static ConfigurationSource? GetStoredProcedureConfigurationSource(
+        IConventionEntityType entityType, EntityState sprocType)
+        => entityType.FindAnnotation(GetAnnotationName(sprocType))
+            ?.GetConfigurationSource();
+
+    private static string GetAnnotationName(EntityState sprocType)
+        => sprocType switch
         {
-            var name = GetFunctionName(methodInfo);
-            if (functions.TryGetValue(name, out var function))
-            {
-                var dbFunction = (DbFunction)function;
-                functions.Remove(name);
-                dbFunction.SetRemovedFromModel();
-
-                return dbFunction;
-            }
-        }
-
-        return null;
-    }
-
-    /// <summary>
-    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
-    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
-    ///     any release. You should only use it directly in your code with extreme caution and knowing that
-    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
-    /// </summary>
-    public static DbFunction? RemoveDbFunction(
-        IMutableModel model,
-        string name)
-    {
-        if (model[RelationalAnnotationNames.DbFunctions] is SortedDictionary<string, IDbFunction> functions
-            && functions.TryGetValue(name, out var function))
-        {
-            functions.Remove(name);
-            ((DbFunction)function).SetRemovedFromModel();
-        }
-
-        return null;
-    }
+            EntityState.Added => RelationalAnnotationNames.InsertStoredProcedure,
+            EntityState.Deleted => RelationalAnnotationNames.DeleteStoredProcedure,
+            EntityState.Modified => RelationalAnnotationNames.UpdateStoredProcedure,
+            _ => throw new InvalidOperationException("Unsopported sproc type " + sprocType)
+        };
 
     /// <inheritdoc />
     [DebuggerStepThrough]
